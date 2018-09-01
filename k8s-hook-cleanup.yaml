@@ -1,0 +1,40 @@
+{{- if .Values.autoCleanup | default false -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-cleanup"
+  labels:
+    app: {{ template "fabric.name" . }}
+    chart: {{ template "fabric.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      name: "{{ .Release.Name }}-cleanup"
+      labels:
+        app: {{ template "fabric.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      restartPolicy: OnFailure
+      #serviceAccount: {{ .Values.ops.sa | default "ops" }}
+      volumes:
+        - name: orderer-home
+          persistentVolumeClaim:
+            claimName: {{ .Values.orderer.persistence.ordererDataPvc | default "orderer-data-pvc" }}
+
+      containers:
+        - name: clean-up-orderer-data
+          image: busybox:1.27.1
+          command: [rm, -fr, '/data/*' ]
+          volumeMounts:
+            - mountPath: /data
+              name: orderer-home
+{{- end -}}
