@@ -1,4 +1,11 @@
 version: '3'
+networks:
+   nodes:
+   db:
+
+volumes:
+  data-volume:
+
 services:
   nginx:
     image: nginx:1.11.13-alpine
@@ -26,3 +33,157 @@ services:
       - ./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     environment:
       MYSQL_ROOT_PASSWORD: my-secret-pw
+# copied from some real project
+  ca:
+    container_name: ca
+    image: docker.repo:5000/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_SERVER_CONFIG_HOME=/etc/hyperledger/fabric-ca-server-config
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start --ca.certfile $$FABRIC_SERVER_CONFIG_HOME/ca.devorg.example.com-cert.pem --ca.keyfile $$FABRIC_SERVER_CONFIG_HOME/68a2639908a61068d06e9113c4758c65e7d0ebbfa56f0f9a88c23b1a59f8ed53_sk -b admin:password -d'
+    volumes:
+      - ./devenv/config/MSPs/peerOrganizations/devorg.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ./devenv/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml
+    networks:
+      - nodes
+
+  redis:
+    container_name: redis
+    image: docker.repo:5000/redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    networks:
+      - nodes
+
+  couchdb:
+    container_name: couchdb
+    image: docker.repo:5000/fabric-couchdb
+    ports:
+      - "5984:5984"
+    networks:
+      - db
+
+  orderer.example.com:
+    container_name: orderer
+    image: docker.repo:5000/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_LEDGERTYPE=json
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/orderer.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/msp/orderer
+      - GRPC_TRACE=all=true,
+      - GRPC_VERBOSITY=debug
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+     - ./devenv/config:/etc/hyperledger/configtx
+     - ./devenv/config/MSPs/ordererOrganizations/example.com/orderers/orderer.example.com/msp/:/etc/hyperledger/msp/orderer
+    ports:
+      - 7050:7050
+    networks:
+      - nodes
+
+  devorg.example.com:
+    container_name: devorg
+    image: docker.repo:5000/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_LOGGING_LEVEL=DEBUG
+      # - CORE_LOGGING_GOSSIP=DEBUG
+      - CORE_PEER_ENDORSER_ENABLED=true
+      #- CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=devorg:7051
+      # The following setting skips the gossip handshake since we are
+      # are not doing mutual TLS
+      - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+      #- CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_ID=devorg.example.com
+      # The following peer address is important, it is the address to set up gossip service
+      # and will be passed to created cc container, default is 0.0.0.0:7051
+      - CORE_PEER_ADDRESS=0.0.0.0:7051
+      - CORE_PEER_LOCALMSPID=DevMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_QUERYLIMIT=1000000
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./devenv/config/MSPs/peerOrganizations/devorg.example.com/peers/peer0.devorg.example.com/msp/:/etc/hyperledger/msp/peer
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start --peer-defaultchain=false
+    ports:
+      - 7051:7051
+      - 7053:7053
+    networks:
+      - nodes
+      - db
+    depends_on:
+      - orderer.example.com
+      - couchdb
+    restart: unless-stopped
+
+  cli:
+    container_name: cli
+    build:
+      context: ./devenv
+      dockerfile: DockerfileCli
+    image: docker.repo:5000/fabric-cli-base
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_ID=cli
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer.example.com:7050
+      - CORE_PEER_ADDRESS=devorg:7051
+      - CORE_PEER_LOCALMSPID=DevMSP
+      - ORDERER_ADDRESS=orderer:7050
+      - CHANNEL_TX_FILE=/etc/hyperledger/configtx/dev.tx
+      - CHANNEL_NAME=dev
+      - CC_NAME=hejia
+      - CC_VERSION=v2.4.1
+      # more config for redis
+      - CORE_PEER_HOST=$REDIS_HOST
+      - CORE_ORDERER_HOST=$REDIS_HOST
+      - CORE_CA_HOST=$REDIS_HOST
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/sh
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./devenv/init.sh:/init.sh
+        - ./devenv/binit.sh:/binit.sh
+        - ./build/bin:/build/bin
+        - ./devenv/upgrade.sh:/upgrade.sh
+        - ./devenv/test.sh:/test.sh
+        - ./devenv/config:/etc/hyperledger/configtx
+        - ./devenv/config/MSPs/peerOrganizations/devorg.example.com/users/Admin@devorg.example.com/msp//:/etc/hyperledger/msp/peer/
+        - ./chaincode/:/opt/gopath/src/github.ibm.com/bc/hejia-pilot/chaincode/
+    networks:
+      - nodes
+      - db
+#  logs:
+#    container_name: logs
+#    image: gliderlabs/logspout
+#    volumes:
+#        - /var/run/docker.sock:/var/run/docker.sock
+#    ports:
+#        - "8000:80"
+#
+#  explorer:
+#    container_name: explorer
+#    image: index.tenxcloud.com/leowa/explorer:1.0.0-alpha2
+#    environment:
+#      - PEER_ADDR=grpc://devorg:7051
+#      - CA_ADDR=http://ca:7054
+#      - CHAINCODE_ID=hejia
+#      - CHANNEL_NAME=dev
+#      - PORT=3000
+#    ports:
+#      - "8080:3000"
