@@ -25,11 +25,17 @@ pipeline {
         // }
         stage('Deploy') {
             input {
-                message "Should we continue?"
-                ok "Yes, we should."
-                submitter "alice,bob"
+                message "Select deployment environment"
+                submitter "azhang"
                 parameters {
-                    string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+                    string(name: 'environment', defaultValue: 'stage', description: 'which environment to deploy?')
+                }
+            }
+            input {
+                message "Select deployment role"
+                submitter "azhang"
+                parameters {
+                    string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy?')
                 }
             }
             steps {
