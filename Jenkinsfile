@@ -1,5 +1,6 @@
-def environment
-def role
+def getRoles() {
+    return ["cn.wish.jenkins", "cn.wishwms.fe", "cn.wishwms.be"]
+}
 pipeline {
     agent {
       label "master"
@@ -12,34 +13,15 @@ pipeline {
                         // Show the select input modal
                        def INPUT_PARAMS = input message: 'Please Provide Parameters', ok: 'Next',
                                         parameters: [
-                                        choice(name: 'ENVIRONMENT', choices: ['dev','qa'].join('\n'), description: 'Please select the Environment'),
-                                        choice(name: 'IMAGE_TAG', choices: ["aa", "bb"].join('\n'), description: 'Available Docker Images')]
-                        env.ENVIRONMENT = INPUT_PARAMS.ENVIRONMENT
-                        env.IMAGE_TAG = INPUT_PARAMS.IMAGE_TAG
+                                        choice(name: 'environment', choices: ['stage','prod'].join('\n'), description: 'Please select the Environment'),
+                                        choice(name: 'role', choices: getRoles().join('\n'), description: 'Please select the role')]
+                        env.ENVIRONMENT = INPUT_PARAMS.environment
+                        env.ROLE = INPUT_PARAMS.role
                     }
                 }
             }
         }
-        // stage('Select deployment environment') {
-        //     env.environment = input {
-        //         message "Select deployment environment"
-        //         submitter "azhang"
-        //         parameters {
-        //             string(name: 'environment', defaultValue: 'stage', description: 'which environment to deploy?')
-        //         }
-        //     }
-        //     steps {
-        //         echo "You are about deploy to ${env.environment}"
-        //     }
-        // }
-        stage("Select role and deploy") {
-            // env.role = input {
-            //     message "Select deployment role"
-            //     submitter "azhang"
-            //     parameters {
-            //         string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy?')
-            //     }
-            // }
+        stage("Deploy") {
             steps {
                 echo "Apply latest state for ${env.ENVIRONMENT} in ${env.IMAGE_TAG}"
                 // # sh "sudo salt --no-color --state-output=changes -C \"G@role:${role} and G@environment:${environment}\" state.highstate"
