@@ -6,7 +6,7 @@ pipeline {
     }
     stages {
         stage('Select deployment environment') {
-            input {
+            environment = input {
                 message "Select deployment environment"
                 submitter "azhang"
                 parameters {
@@ -18,7 +18,7 @@ pipeline {
             }
         }
         stage("Select role and deploy") {
-            input {
+            role = input {
                 message "Select deployment role"
                 submitter "azhang"
                 parameters {
