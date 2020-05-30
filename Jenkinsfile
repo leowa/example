@@ -14,7 +14,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo "Apply latest state for ${role} in ${environment}"
-                # sh "sudo salt --no-color --state-output=changes -C \"G@role:${role} and G@environment:${environment}\" state.highstate"
+                // # sh "sudo salt --no-color --state-output=changes -C \"G@role:${role} and G@environment:${environment}\" state.highstate"
             }
         }
     }
