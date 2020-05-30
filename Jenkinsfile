@@ -24,18 +24,22 @@ pipeline {
         //     }
         // }
         stage('Deploy') {
-            input {
-                message "Select deployment environment"
-                submitter "azhang"
-                parameters {
-                    string(name: 'environment', defaultValue: 'stage', description: 'which environment to deploy?')
+            steps {
+                input {
+                    message "Select deployment environment"
+                    submitter "azhang"
+                    parameters {
+                        string(name: 'environment', defaultValue: 'stage', description: 'which environment to deploy?')
+                    }
                 }
             }
-            input {
-                message "Select deployment role"
-                submitter "azhang"
-                parameters {
-                    string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy?')
+            steps {
+                input {
+                    message "Select deployment role"
+                    submitter "azhang"
+                    parameters {
+                        string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy?')
+                    }
                 }
             }
             steps {
