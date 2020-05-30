@@ -1,4 +1,3 @@
-def environment
 def role
 pipeline {
     agent {
@@ -7,8 +6,21 @@ pipeline {
     stages {
         stage ('Select'){
             steps {
-                environment = input( id: 'userInput', message: 'Select deployment environment', parameters: [ ['$class': 'ChoiceParameterDefinition', choices: 'stage\nproduction', description: '', name: ''] ])
-                role = input( id: 'userInput', message: 'Select deployment role', parameters: [ ['$class': 'ChoiceParameterDefinition', choices: 'cn.wish.jenkins\nother', description: '', name: ''] ])
+                input {
+                    message "Select deployment environment"
+                    submitter "azhang"
+                    // ['$class': 'ChoiceParameterDefinition', choices: 'stage\nproduction', description: '', name: ''] 
+                    parameters {
+                        string(name: 'environment', defaultValue: 'environment', description: 'which environment to deploy')
+                    }
+                }
+                input {
+                    message "Select deployment role"
+                    submitter "azhang"
+                    parameters {
+                        string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy')
+                    }
+                }
             }
         }
         stage('Deploy') {
