@@ -6,7 +6,7 @@ pipeline {
     }
     stages {
         stage('Select deployment environment') {
-            environment = input {
+            env.environment = input {
                 message "Select deployment environment"
                 submitter "azhang"
                 parameters {
@@ -14,11 +14,11 @@ pipeline {
                 }
             }
             steps {
-                echo "You are about deploy to ${environment}"
+                echo "You are about deploy to ${env.environment}"
             }
         }
         stage("Select role and deploy") {
-            role = input {
+            env.role = input {
                 message "Select deployment role"
                 submitter "azhang"
                 parameters {
@@ -26,7 +26,7 @@ pipeline {
                 }
             }
             steps {
-                echo "Apply latest state for ${role} in ${environment}"
+                echo "Apply latest state for ${env.role} in ${env.environment}"
                 // # sh "sudo salt --no-color --state-output=changes -C \"G@role:${role} and G@environment:${environment}\" state.highstate"
             }
         }
