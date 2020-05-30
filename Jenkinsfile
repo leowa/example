@@ -23,7 +23,7 @@ pipeline {
         }
         stage("Deploy") {
             steps {
-                echo "Apply latest state for ${env.ENVIRONMENT} in ${env.IMAGE_TAG}"
+                echo "Apply latest state for ${env.role} in ${env.ENVIRONMENT}"
                 // # sh "sudo salt --no-color --state-output=changes -C \"G@role:${role} and G@environment:${environment}\" state.highstate"
             }
         }
