@@ -32,15 +32,15 @@ pipeline {
                 }
             }
         }
-        stage("Select role") {
-            input {
-                message "Select deployment role"
-                submitter "azhang"
-                parameters {
-                    string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy?')
-                }
-            }
-        }
+        // stage("Select role") {
+        //     input {
+        //         message "Select deployment role"
+        //         submitter "azhang"
+        //         parameters {
+        //             string(name: 'role', defaultValue: 'cn.wish.jenkins', description: 'which role to deploy?')
+        //         }
+        //     }
+        // }
         stage('Deploy') {
             steps {
                 echo "Apply latest state for ${role} in ${environment}"
